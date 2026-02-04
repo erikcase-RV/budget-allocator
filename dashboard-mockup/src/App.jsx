@@ -308,7 +308,7 @@ export default function App() {
           <KPICard 
             title="Total Spend (7d)" 
             value={`$${Math.round(totalSpend).toLocaleString()}`}
-            subtitle="Across 3 platforms"
+            subtitle="Across 5 platforms"
             trend={-2.4}
             icon={DollarSign}
             color="blue"
