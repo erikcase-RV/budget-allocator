@@ -20,9 +20,9 @@ clk_daily AS (
   SELECT
     CAST(msg_date AS DATE) AS dt,
     CASE
-      WHEN web IN ('sem_savings_google_b', 'sem_savings_google_c', 'sem_savings_google_d', 'sem_savings_google_2', 'sem_savings_google_1') THEN 'google_main'
+      WHEN web IN ('sem_savings_google_a', 'sem_savings_google_b', 'sem_savings_google_c', 'sem_savings_google_d', 'sem_savings_google_e', 'sem_savings_google_2', 'sem_savings_google_1') THEN 'google_main'
       WHEN web = 'sem_savings_google_whale' THEN 'whale'
-      WHEN web IN ('sem_savings_bing_desktop', 'sem_savings_bing_mobile') THEN 'bing'
+      WHEN web IN ('sem_savings_bing_desktop', 'sem_savings_bing_mobile', 'sem_savings_bing_1') THEN 'bing'
     END AS platform,
     COUNT(DISTINCT CASE WHEN cost_per_click > 0 THEN purchaseid END) AS rt_clicks_paid,
     SUM(CASE WHEN cost_per_click > 0 THEN cost_per_click ELSE 0 END) AS revenue_paid

@@ -82,13 +82,13 @@ This document maps campaign relationships, hierarchies, and attribution patterns
 
 | Platform | agg_daily_v2.campaign | clicksanalytics_v2.web | Status | Evidence |
 |----------|----------------------|------------------------|--------|----------|
-| google_main | `SMMA: Automated Bidding` | `sem_savings_google_b`, `sem_savings_google_c`, `sem_savings_google_d`, `sem_savings_google_2`, `sem_savings_google_1` | **CONFIRMED** | sql/03c results: b=9,419, c=6,847, d=2,777, 2=1,675, 1=214 rows |
+| google_main | `SMMA: Automated Bidding` | `sem_savings_google_a`, `sem_savings_google_b`, `sem_savings_google_c`, `sem_savings_google_d`, `sem_savings_google_e`, `sem_savings_google_2`, `sem_savings_google_1` | **CONFIRMED** | sql/03c results: b=9,419, c=6,847, d=2,777, 2=1,675, 1=214 rows. Added a, e due to unmapped_web_drift_7d in docs/monitoring/2026-01-27.md |
 | whale | `SMMA: Whale Campaign` | `sem_savings_google_whale` | **CONFIRMED** | 936 rows in top 50 web values |
-| bing | `p:B \| SMMA: Automated Bidding%` | `sem_savings_bing_desktop`, `sem_savings_bing_mobile` | **CONFIRMED** | 1,993 + 801 rows in top 50 web values |
+| bing | `p:B \| SMMA: Automated Bidding%` | `sem_savings_bing_desktop`, `sem_savings_bing_mobile`, `sem_savings_bing_1` | **CONFIRMED** | 1,993 + 801 rows in top 50 web values. Added bing_1 due to unmapped_web_drift_7d in docs/monitoring/2026-01-27.md |
 
 ### Notes
 
-- **google_main**: Maps to multiple web values (b, c, d, 2, 1) based on `sql/03c_google_main_web_discovery_p14d.sql` results. These are the `sem_savings_google_*` variants with Google traffic source attribution.
+- **google_main**: Maps to multiple web values (a, b, c, d, e, 2, 1) based on `sql/03c_google_main_web_discovery_p14d.sql` results and drift detection. These are the `sem_savings_google_*` variants with Google traffic source attribution.
 - **whale**: Remains separate with `web = 'sem_savings_google_whale'`. Do not include in google_main.
 - **bing**: agg_daily_v2 campaigns include Desktop/Mobile suffix (`p:B | SMMA: Automated Bidding Desktop`, `p:B | SMMA: Automated Bidding Mobile`). Mapping uses wildcard `%` to match both variants. Evidence: `sql/04a_bing_agg_discovery_p30d.sql`.
 
