@@ -280,6 +280,9 @@ function BudgetSimulator() {
           </div>
         ))}
       </div>
+      <p className="mt-4 text-xs text-gray-400 italic">
+        Assumes linear scaling. Actual ROAS typically decreases at higher spend due to diminishing returns.
+      </p>
     </div>
   );
 }
