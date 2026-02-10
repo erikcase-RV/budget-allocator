@@ -3,7 +3,7 @@ const path = require('path');
 const { DBSQLClient } = require('@databricks/sql');
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.DATABRICKS_APP_PORT || process.env.PORT || 8000;
 
 // Serve Vite-built static assets
 app.use(express.static(path.join(__dirname, 'dist')));
@@ -11,31 +11,39 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // ---------------------------------------------------------------------------
 // Databricks SQL helper
 // ---------------------------------------------------------------------------
-function getConnection() {
-  const host = process.env.DATABRICKS_HOST;
-  const token = process.env.DATABRICKS_TOKEN;
+async function getClient() {
+  const rawHost = process.env.DATABRICKS_HOST;
+  const clientId = process.env.DATABRICKS_CLIENT_ID;
+  const clientSecret = process.env.DATABRICKS_CLIENT_SECRET;
   const warehouseId = process.env.DATABRICKS_WAREHOUSE_ID;
 
-  if (!host || !token || !warehouseId) {
+  if (!rawHost || !clientId || !clientSecret || !warehouseId) {
     throw new Error(
-      'Missing required env vars: DATABRICKS_HOST, DATABRICKS_TOKEN, DATABRICKS_WAREHOUSE_ID'
+      'Missing required env vars. Got: ' +
+      `DATABRICKS_HOST=${rawHost ? 'set' : 'MISSING'}, ` +
+      `DATABRICKS_CLIENT_ID=${clientId ? 'set' : 'MISSING'}, ` +
+      `DATABRICKS_CLIENT_SECRET=${clientSecret ? 'set' : 'MISSING'}, ` +
+      `DATABRICKS_WAREHOUSE_ID=${warehouseId ? 'set' : 'MISSING'}`
     );
   }
 
+  const host = rawHost.replace(/^https?:\/\//, '');
+
   const client = new DBSQLClient();
-  return client
-    .connect({
-      host,
-      path: `/sql/1.0/warehouses/${warehouseId}`,
-      token,
-    })
-    .then((connection) => connection);
+  const connectedClient = await client.connect({
+    authType: 'databricks-oauth',
+    host,
+    path: `/sql/1.0/warehouses/${warehouseId}`,
+    oauthClientId: clientId,
+    oauthClientSecret: clientSecret,
+  });
+  return connectedClient;
 }
 
 async function runQuery(sql) {
-  const connection = await getConnection();
+  const client = await getClient();
   try {
-    const session = await connection.openSession();
+    const session = await client.openSession();
     const operation = await session.executeStatement(sql, {
       runAsync: true,
       maxRows: 10000,
@@ -45,7 +53,7 @@ async function runQuery(sql) {
     await session.close();
     return result;
   } finally {
-    await connection.close();
+    await client.close();
   }
 }
 
