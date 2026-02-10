@@ -1,0 +1,4 @@
+command: ['node', 'server.js']
+env:
+  - name: 'DATABRICKS_WAREHOUSE_ID'
+    value: 'a2a6f171e901de84'

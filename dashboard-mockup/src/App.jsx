@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -17,45 +17,67 @@ const COLORS = {
   taboola: '#FF6B35'
 };
 
-const platformData = [
-  { platform: 'Google', clicks_7d: 20803, cost_7d: 66894, revenue_7d: 238221, roas_7d: 3.56, allocation: 42.8, cpc: 3.22, rtctr: 51.0, rpc: 22.44, color: COLORS.google },
-  { platform: 'Bing', clicks_7d: 13894, cost_7d: 6574, revenue_7d: 9802, roas_7d: 1.49, allocation: 17.9, cpc: 0.47, rtctr: 7.5, rpc: 9.45, color: COLORS.bing },
-  { platform: 'Meta', clicks_7d: 6435, cost_7d: 11255, revenue_7d: 33858, roas_7d: 3.01, allocation: 21.5, cpc: 1.75, rtctr: 14.2, rpc: 5.26, color: COLORS.meta },
-  { platform: 'Taboola', clicks_7d: 3940, cost_7d: 17255, revenue_7d: 33937, roas_7d: 1.97, allocation: 11.8, cpc: 4.38, rtctr: 7.1, rpc: 8.61, color: COLORS.taboola },
-  { platform: 'Whale', clicks_7d: 2534, cost_7d: 21731, revenue_7d: 18749, roas_7d: 0.86, allocation: 6.0, cpc: 8.58, rtctr: 17.3, rpc: 42.71, color: COLORS.whale },
-];
+const PLATFORM_COLOR_MAP = {
+  Google: COLORS.google,
+  Bing: COLORS.bing,
+  Microsoft: COLORS.bing,
+  Meta: COLORS.meta,
+  Taboola: COLORS.taboola,
+  Whale: COLORS.whale,
+};
 
-const trendData = [
-  { date: '01/20', google: 3.42, bing: 1.38, meta: 2.85, taboola: 1.82, whale: 0.91 },
-  { date: '01/21', google: 3.51, bing: 1.45, meta: 2.92, taboola: 1.88, whale: 0.88 },
-  { date: '01/22', google: 3.48, bing: 1.52, meta: 2.98, taboola: 1.91, whale: 0.82 },
-  { date: '01/23', google: 3.55, bing: 1.48, meta: 3.05, taboola: 1.95, whale: 0.85 },
-  { date: '01/24', google: 3.62, bing: 1.51, meta: 2.95, taboola: 1.99, whale: 0.89 },
-  { date: '01/25', google: 3.58, bing: 1.44, meta: 3.08, taboola: 2.01, whale: 0.92 },
-  { date: '01/26', google: 3.56, bing: 1.49, meta: 3.01, taboola: 1.97, whale: 0.86 },
-];
+function colorFor(platform) {
+  return PLATFORM_COLOR_MAP[platform] || '#6B7280';
+}
 
-const allocationData = [
-  { name: 'Google', value: 42.8, color: COLORS.google },
-  { name: 'Meta', value: 21.5, color: COLORS.meta },
-  { name: 'Bing', value: 17.9, color: COLORS.bing },
-  { name: 'Taboola', value: 11.8, color: COLORS.taboola },
-  { name: 'Whale', value: 6.0, color: COLORS.whale },
-];
+function transformPlatformRollups(rows) {
+  const byPlatform = {};
+  for (const row of rows) {
+    if (row.window !== '7d') continue;
+    byPlatform[row.platform] = row;
+  }
+  const totalCost = Object.values(byPlatform).reduce((s, r) => s + Number(r.cost), 0);
+  return Object.values(byPlatform).map((r) => ({
+    platform: r.platform,
+    clicks_7d: Number(r.clicks_7d || r.clicks),
+    cost_7d: Number(r.cost),
+    revenue_7d: Number(r.revenue),
+    roas_7d: Number(r.roas) || 0,
+    allocation: totalCost > 0 ? Math.round((Number(r.cost) / totalCost) * 1000) / 10 : 0,
+    cpc: Number(r.cpc) || 0,
+    rpc: Number(r.rpc) || 0,
+    color: colorFor(r.platform),
+  }));
+}
 
-const efficiencyData = [
-  { platform: 'Google', cpc: 3.22, rpc: 22.44, volume: 20803, color: COLORS.google },
-  { platform: 'Bing', cpc: 0.47, rpc: 9.45, volume: 13894, color: COLORS.bing },
-  { platform: 'Meta', cpc: 1.75, rpc: 5.26, volume: 6435, color: COLORS.meta },
-  { platform: 'Taboola', cpc: 4.38, rpc: 8.61, volume: 3940, color: COLORS.taboola },
-  { platform: 'Whale', cpc: 8.58, rpc: 42.71, volume: 2534, color: COLORS.whale },
-];
+function transformDailyRoas(rows) {
+  const byDate = {};
+  for (const row of rows) {
+    const d = String(row.date).slice(5, 10).replace('-', '/');
+    if (!byDate[d]) byDate[d] = { date: d };
+    byDate[d][row.platform.toLowerCase()] = Number(row.roas) || 0;
+  }
+  return Object.values(byDate).sort((a, b) => (a.date > b.date ? 1 : -1));
+}
 
-const alerts = [
-  { type: 'warning', message: 'Meta/Taboola: Using FF revenue (post-lead tracking unavailable)' },
-  { type: 'info', message: 'Whale volume below 500 clicks/day threshold' },
-  { type: 'success', message: 'All 5 platforms have full 7d data coverage' },
-];
+function transformEfficiency(rows) {
+  return rows.map((r) => ({
+    platform: r.platform,
+    cpc: Number(r.cpc) || 0,
+    rpc: Number(r.rpc) || 0,
+    volume: Number(r.volume) || 0,
+    color: colorFor(r.platform),
+  }));
+}
+
+function deriveAllocation(platformData) {
+  const totalCost = platformData.reduce((s, p) => s + p.cost_7d, 0);
+  return platformData.map((p) => ({
+    name: p.platform,
+    value: totalCost > 0 ? Math.round((p.cost_7d / totalCost) * 1000) / 10 : 0,
+    color: p.color,
+  }));
+}
 
 function KPICard({ title, value, subtitle, trend, icon: Icon, color = 'blue' }) {
   const trendUp = trend > 0;
@@ -175,7 +197,7 @@ function PlatformTable({ data }) {
               <th className="pb-3 font-medium text-right">Revenue</th>
               <th className="pb-3 font-medium text-right">ROAS</th>
               <th className="pb-3 font-medium text-right">CPC</th>
-              <th className="pb-3 font-medium text-right">RTCTR</th>
+              <th className="pb-3 font-medium text-right">RPC</th>
               <th className="pb-3 font-medium text-right">Allocation</th>
             </tr>
           </thead>
@@ -188,7 +210,7 @@ function PlatformTable({ data }) {
                 <td className="py-3 text-right text-gray-600">${row.revenue_7d.toLocaleString()}</td>
                 <td className="py-3 text-right font-semibold text-gray-900">{row.roas_7d.toFixed(2)}x</td>
                 <td className="py-3 text-right text-gray-600">${row.cpc.toFixed(2)}</td>
-                <td className="py-3 text-right text-gray-600">{row.rtctr}%</td>
+                <td className="py-3 text-right text-gray-600">${row.rpc.toFixed(2)}</td>
                 <td className="py-3 text-right">
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                     {row.allocation}%
@@ -235,16 +257,15 @@ function AlertsPanel({ alerts }) {
   );
 }
 
-function BudgetSimulator() {
+function BudgetSimulator({ platformData }) {
   const [budget, setBudget] = useState(100000);
-  const projected = {
-    google: budget * 0.428 * 3.56,
-    meta: budget * 0.215 * 3.01,
-    bing: budget * 0.179 * 1.49,
-    taboola: budget * 0.118 * 1.97,
-    whale: budget * 0.060 * 0.86,
-  };
-  const total = projected.google + projected.meta + projected.bing + projected.taboola + projected.whale;
+  const totalCost = platformData.reduce((s, p) => s + p.cost_7d, 0);
+  const projected = {};
+  for (const p of platformData) {
+    const share = totalCost > 0 ? p.cost_7d / totalCost : 0;
+    projected[p.platform.toLowerCase()] = budget * share * (p.roas_7d || 0);
+  }
+  const total = Object.values(projected).reduce((s, v) => s + v, 0);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -287,10 +308,85 @@ function BudgetSimulator() {
   );
 }
 
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500" />
+    </div>
+  );
+}
+
+function ErrorBanner({ message }) {
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+      <strong>Error loading data:</strong> {message}
+    </div>
+  );
+}
+
 export default function App() {
+  const [platformData, setPlatformData] = useState([]);
+  const [trendData, setTrendData] = useState([]);
+  const [efficiencyData, setEfficiencyData] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchAll() {
+      try {
+        const [rollupRes, trendRes, effRes, alertRes] = await Promise.all([
+          fetch('/api/platform-rollups'),
+          fetch('/api/daily-roas'),
+          fetch('/api/efficiency'),
+          fetch('/api/alerts'),
+        ]);
+
+        for (const r of [rollupRes, trendRes, effRes, alertRes]) {
+          if (!r.ok) throw new Error(`${r.url} returned ${r.status}`);
+        }
+
+        const [rollupJson, trendJson, effJson, alertJson] = await Promise.all([
+          rollupRes.json(),
+          trendRes.json(),
+          effRes.json(),
+          alertRes.json(),
+        ]);
+
+        setPlatformData(transformPlatformRollups(rollupJson));
+        setTrendData(transformDailyRoas(trendJson));
+        setEfficiencyData(transformEfficiency(effJson));
+        setAlerts(alertJson);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAll();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-10">
+        <ErrorBanner message={error} />
+      </div>
+    );
+  }
+
+  const allocationData = deriveAllocation(platformData);
   const totalSpend = platformData.reduce((s, p) => s + p.cost_7d, 0);
   const totalRevenue = platformData.reduce((s, p) => s + p.revenue_7d, 0);
-  const blendedROAS = totalRevenue / totalSpend;
+  const blendedROAS = totalSpend > 0 ? totalRevenue / totalSpend : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -301,7 +397,7 @@ export default function App() {
             <p className="text-sm text-gray-500">Deposits Paid Media Optimization</p>
           </div>
           <div className="text-sm text-gray-500">
-            Last updated: Jan 27, 2026
+            Last updated: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
       </header>
@@ -311,8 +407,7 @@ export default function App() {
           <KPICard 
             title="Total Spend (7d)" 
             value={`$${Math.round(totalSpend).toLocaleString()}`}
-            subtitle="Across 5 platforms"
-            trend={-2.4}
+            subtitle={`Across ${platformData.length} platforms`}
             icon={DollarSign}
             color="blue"
           />
@@ -320,7 +415,6 @@ export default function App() {
             title="Total Revenue (7d)" 
             value={`$${Math.round(totalRevenue).toLocaleString()}`}
             subtitle="FF attributed"
-            trend={5.2}
             icon={TrendingUp}
             color="green"
           />
@@ -328,7 +422,6 @@ export default function App() {
             title="Blended ROAS" 
             value={`${blendedROAS.toFixed(2)}x`}
             subtitle="Revenue / Spend"
-            trend={7.8}
             icon={Target}
             color="purple"
           />
@@ -336,7 +429,6 @@ export default function App() {
             title="Total Clicks (7d)" 
             value={platformData.reduce((s, p) => s + p.clicks_7d, 0).toLocaleString()}
             subtitle="Paid clicks only"
-            trend={1.1}
             icon={MousePointer}
             color="indigo"
           />
@@ -353,7 +445,7 @@ export default function App() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <EfficiencyScatter data={efficiencyData} />
-          <BudgetSimulator />
+          <BudgetSimulator platformData={platformData} />
           <AlertsPanel alerts={alerts} />
         </div>
       </main>
