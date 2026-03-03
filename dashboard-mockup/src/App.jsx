@@ -12,7 +12,6 @@ import {
 const COLORS = {
   google: '#4285F4',
   bing: '#00A4EF',
-  whale: '#9333EA',
   meta: '#1877F2',
   taboola: '#FF6B35'
 };
@@ -23,7 +22,6 @@ const PLATFORM_COLOR_MAP = {
   Microsoft: COLORS.bing,
   Meta: COLORS.meta,
   Taboola: COLORS.taboola,
-  Whale: COLORS.whale,
 };
 
 function colorFor(platform) {
@@ -155,7 +153,6 @@ function ROASTrend({ data }) {
           <Line type="monotone" dataKey="meta" stroke={COLORS.meta} strokeWidth={2} dot={false} name="Meta" />
           <Line type="monotone" dataKey="taboola" stroke={COLORS.taboola} strokeWidth={2} dot={false} name="Taboola" />
           <Line type="monotone" dataKey="bing" stroke={COLORS.bing} strokeWidth={2} dot={false} name="Bing" />
-          <Line type="monotone" dataKey="whale" stroke={COLORS.whale} strokeWidth={2} dot={false} name="Whale" />
         </LineChart>
       </ResponsiveContainer>
     </div>

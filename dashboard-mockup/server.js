@@ -8,6 +8,15 @@ const PORT = process.env.DATABRICKS_APP_PORT || process.env.PORT || 8000;
 // Serve Vite-built static assets
 app.use(express.static(path.join(__dirname, 'dist')));
 
+function platformNormalizationExpr(column = 'platform') {
+  return `
+    CASE
+      WHEN lower(${column}) = 'whale' THEN 'Google'
+      ELSE ${column}
+    END
+  `;
+}
+
 // ---------------------------------------------------------------------------
 // Databricks SQL helper
 // ---------------------------------------------------------------------------
@@ -64,18 +73,28 @@ async function runQuery(sql) {
 // /api/platform-rollups -- platform-level 7d/14d/28d rollups
 app.get('/api/platform-rollups', async (req, res) => {
   try {
+    const platformExpr = platformNormalizationExpr();
     const sql = `
-      WITH daily_data AS (
+      WITH normalized_data AS (
+        SELECT
+          date,
+          ${platformExpr} AS platform,
+          cost,
+          clicks,
+          total_actual_revenue AS revenue
+        FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
+        WHERE date >= date_sub(current_date(), 28)
+          AND date < current_date()
+          AND vertical = 'deposits'
+      ),
+      daily_data AS (
         SELECT
           date,
           platform,
           SUM(cost) AS cost,
           SUM(clicks) AS clicks,
-          SUM(total_actual_revenue) AS revenue
-        FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
-        WHERE date >= date_sub(current_date(), 28)
-          AND date < current_date()
-          AND vertical = 'deposits'
+          SUM(revenue) AS revenue
+        FROM normalized_data
         GROUP BY date, platform
       ),
       platform_7d AS (
@@ -137,15 +156,24 @@ app.get('/api/platform-rollups', async (req, res) => {
 // /api/daily-roas -- daily ROAS by platform for the trend chart
 app.get('/api/daily-roas', async (req, res) => {
   try {
+    const platformExpr = platformNormalizationExpr();
     const sql = `
+      WITH normalized_data AS (
+        SELECT
+          date,
+          ${platformExpr} AS platform,
+          cost,
+          total_actual_revenue AS revenue
+        FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
+        WHERE date >= date_sub(current_date(), 14)
+          AND date < current_date()
+          AND vertical = 'deposits'
+      )
       SELECT
         date,
         platform,
-        SUM(total_actual_revenue) / NULLIF(SUM(cost), 0) AS roas
-      FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
-      WHERE date >= date_sub(current_date(), 14)
-        AND date < current_date()
-        AND vertical = 'deposits'
+        SUM(revenue) / NULLIF(SUM(cost), 0) AS roas
+      FROM normalized_data
       GROUP BY date, platform
       ORDER BY date, platform
     `;
@@ -160,16 +188,25 @@ app.get('/api/daily-roas', async (req, res) => {
 // /api/efficiency -- CPC and RPC by platform for scatter plot
 app.get('/api/efficiency', async (req, res) => {
   try {
+    const platformExpr = platformNormalizationExpr();
     const sql = `
+      WITH normalized_data AS (
+        SELECT
+          ${platformExpr} AS platform,
+          cost,
+          clicks,
+          total_actual_revenue AS revenue
+        FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
+        WHERE date >= date_sub(current_date(), 7)
+          AND date < current_date()
+          AND vertical = 'deposits'
+      )
       SELECT
         platform,
         SUM(cost) / NULLIF(SUM(clicks), 0) AS cpc,
-        SUM(total_actual_revenue) / NULLIF(SUM(clicks), 0) AS rpc,
+        SUM(revenue) / NULLIF(SUM(clicks), 0) AS rpc,
         SUM(clicks) AS volume
-      FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
-      WHERE date >= date_sub(current_date(), 7)
-        AND date < current_date()
-        AND vertical = 'deposits'
+      FROM normalized_data
       GROUP BY platform
       ORDER BY platform
     `;
@@ -185,17 +222,26 @@ app.get('/api/efficiency', async (req, res) => {
 app.get('/api/alerts', async (req, res) => {
   try {
     const sql = `
-      WITH daily_data AS (
+      WITH normalized_data AS (
+        SELECT
+          date,
+          ${platformNormalizationExpr()} AS platform,
+          cost,
+          clicks,
+          total_actual_revenue AS revenue
+        FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
+        WHERE date >= date_sub(current_date(), 7)
+          AND date < current_date()
+          AND vertical = 'deposits'
+      ),
+      daily_data AS (
         SELECT
           date,
           platform,
           SUM(cost) AS cost,
           SUM(clicks) AS clicks,
-          SUM(total_actual_revenue) AS revenue
-        FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
-        WHERE date >= date_sub(current_date(), 7)
-          AND date < current_date()
-          AND vertical = 'deposits'
+          SUM(revenue) AS revenue
+        FROM normalized_data
         GROUP BY date, platform
       ),
       platform_flags AS (
