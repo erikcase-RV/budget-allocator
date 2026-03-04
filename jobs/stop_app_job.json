@@ -1,0 +1,29 @@
+{
+  "name": "budget-allocator-stop",
+  "tasks": [
+    {
+      "task_key": "stop_app",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/ecase@redventures.com/budget-allocator/jobs/manage_app",
+        "base_parameters": {
+          "action": "stop",
+          "app_name": "budget-allocator"
+        }
+      },
+      "new_cluster": {
+        "spark_version": "15.4.x-scala2.12",
+        "num_workers": 0,
+        "node_type_id": "i3.xlarge"
+      }
+    }
+  ],
+  "schedule": {
+    "quartz_cron_expression": "0 0 19 ? * MON-FRI",
+    "timezone_id": "America/Chicago",
+    "pause_status": "UNPAUSED"
+  },
+  "tags": {
+    "project": "budget-allocator",
+    "purpose": "app-scheduler"
+  }
+}
