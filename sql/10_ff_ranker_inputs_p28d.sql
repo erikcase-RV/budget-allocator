@@ -89,7 +89,7 @@ WITH campaign_daily AS (
     platform,
     channel,
     search,
-    campaign_id,
+    campaign_key,
     campaign_name,
     account_id,
     account_name,
@@ -100,7 +100,7 @@ WITH campaign_daily AS (
   WHERE date >= date_sub(current_date(), 28)
     AND date < current_date()
     AND vertical = 'deposits'
-  GROUP BY date, platform, channel, search, campaign_id, campaign_name, account_id, account_name
+  GROUP BY date, platform, channel, search, campaign_key, campaign_name, account_id, account_name
 ),
 
 campaign_7d AS (
@@ -108,10 +108,10 @@ campaign_7d AS (
     platform,
     channel,
     search,
-    campaign_id,
+    campaign_key,
     campaign_name,
-    account_id,
-    account_name,
+    CASE WHEN COUNT(DISTINCT account_id) = 1 THEN MAX(account_id) END AS account_id,
+    CASE WHEN COUNT(DISTINCT account_name) = 1 THEN MAX(account_name) ELSE 'MULTIPLE_ACCOUNTS' END AS account_name,
     '7d' AS window,
     SUM(cost) AS cost,
     SUM(clicks) AS clicks,
@@ -124,7 +124,7 @@ campaign_7d AS (
     SUM(CASE WHEN clicks = 0 AND cost > 0 THEN 1 ELSE 0 END) AS clicks_zero_cost_positive_days
   FROM campaign_daily
   WHERE date >= date_sub(current_date(), 7)
-  GROUP BY platform, channel, search, campaign_id, campaign_name, account_id, account_name
+  GROUP BY platform, channel, search, campaign_key, campaign_name
 ),
 
 campaign_14d AS (
@@ -132,10 +132,10 @@ campaign_14d AS (
     platform,
     channel,
     search,
-    campaign_id,
+    campaign_key,
     campaign_name,
-    account_id,
-    account_name,
+    CASE WHEN COUNT(DISTINCT account_id) = 1 THEN MAX(account_id) END AS account_id,
+    CASE WHEN COUNT(DISTINCT account_name) = 1 THEN MAX(account_name) ELSE 'MULTIPLE_ACCOUNTS' END AS account_name,
     '14d' AS window,
     SUM(cost) AS cost,
     SUM(clicks) AS clicks,
@@ -148,7 +148,7 @@ campaign_14d AS (
     SUM(CASE WHEN clicks = 0 AND cost > 0 THEN 1 ELSE 0 END) AS clicks_zero_cost_positive_days
   FROM campaign_daily
   WHERE date >= date_sub(current_date(), 14)
-  GROUP BY platform, channel, search, campaign_id, campaign_name, account_id, account_name
+  GROUP BY platform, channel, search, campaign_key, campaign_name
 ),
 
 campaign_28d AS (
@@ -156,10 +156,10 @@ campaign_28d AS (
     platform,
     channel,
     search,
-    campaign_id,
+    campaign_key,
     campaign_name,
-    account_id,
-    account_name,
+    CASE WHEN COUNT(DISTINCT account_id) = 1 THEN MAX(account_id) END AS account_id,
+    CASE WHEN COUNT(DISTINCT account_name) = 1 THEN MAX(account_name) ELSE 'MULTIPLE_ACCOUNTS' END AS account_name,
     '28d' AS window,
     SUM(cost) AS cost,
     SUM(clicks) AS clicks,
@@ -171,7 +171,7 @@ campaign_28d AS (
     SUM(CASE WHEN cost = 0 AND revenue > 0 THEN 1 ELSE 0 END) AS cost_zero_revenue_positive_days,
     SUM(CASE WHEN clicks = 0 AND cost > 0 THEN 1 ELSE 0 END) AS clicks_zero_cost_positive_days
   FROM campaign_daily
-  GROUP BY platform, channel, search, campaign_id, campaign_name, account_id, account_name
+  GROUP BY platform, channel, search, campaign_key, campaign_name
 )
 
 SELECT * FROM campaign_7d
@@ -179,4 +179,4 @@ UNION ALL
 SELECT * FROM campaign_14d
 UNION ALL
 SELECT * FROM campaign_28d
-ORDER BY platform, campaign_id, window;
+ORDER BY platform, campaign_key, window;

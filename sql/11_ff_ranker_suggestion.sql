@@ -76,10 +76,10 @@ ORDER BY rank_all;
 WITH campaign_metrics AS (
   SELECT
     platform,
-    campaign_id,
+    campaign_key,
     campaign_name,
-    account_id,
-    account_name,
+    CASE WHEN COUNT(DISTINCT account_id) = 1 THEN MAX(account_id) END AS account_id,
+    CASE WHEN COUNT(DISTINCT account_name) = 1 THEN MAX(account_name) ELSE 'MULTIPLE_ACCOUNTS' END AS account_name,
     SUM(CASE WHEN date >= date_sub(current_date(), 7) THEN cost ELSE 0 END) AS cost_7d,
     SUM(CASE WHEN date >= date_sub(current_date(), 7) THEN clicks ELSE 0 END) AS clicks_7d,
     SUM(CASE WHEN date >= date_sub(current_date(), 7) THEN total_actual_revenue ELSE 0 END) AS revenue_7d,
@@ -90,13 +90,13 @@ WITH campaign_metrics AS (
   WHERE date >= date_sub(current_date(), 14)
     AND date < current_date()
     AND vertical = 'deposits'
-  GROUP BY platform, campaign_id, campaign_name, account_id, account_name
+  GROUP BY platform, campaign_key, campaign_name
 ),
 
 campaign_ranked AS (
   SELECT
     platform,
-    campaign_id,
+    campaign_key,
     campaign_name,
     account_name,
     clicks_7d,
@@ -126,7 +126,7 @@ campaign_ranked AS (
 SELECT
   rank_all AS rank,
   platform,
-  campaign_id,
+  campaign_key,
   LEFT(campaign_name, 60) AS campaign_name_short,
   account_name,
   clicks_7d,
@@ -146,7 +146,7 @@ ORDER BY rank_all;
 WITH campaign_metrics AS (
   SELECT
     platform,
-    campaign_id,
+    campaign_key,
     campaign_name,
     SUM(CASE WHEN date >= date_sub(current_date(), 7) THEN cost ELSE 0 END) AS cost_7d,
     SUM(CASE WHEN date >= date_sub(current_date(), 7) THEN clicks ELSE 0 END) AS clicks_7d,
@@ -155,14 +155,14 @@ WITH campaign_metrics AS (
   WHERE date >= date_sub(current_date(), 7)
     AND date < current_date()
     AND vertical = 'deposits'
-  GROUP BY platform, campaign_id, campaign_name
+  GROUP BY platform, campaign_key, campaign_name
   HAVING SUM(cost) > 0
 ),
 
 ranked AS (
   SELECT
     platform,
-    campaign_id,
+    campaign_key,
     campaign_name,
     clicks_7d,
     cost_7d,
@@ -176,7 +176,7 @@ ranked AS (
 SELECT
   platform,
   rn AS platform_rank,
-  campaign_id,
+  campaign_key,
   LEFT(campaign_name, 50) AS campaign_name_short,
   clicks_7d,
   ROUND(cost_7d, 2) AS cost_7d,

@@ -305,14 +305,14 @@ ORDER BY total_cost DESC;
 -- I) FF NEW PLATFORMS/CAMPAIGNS WITH SPEND (not in prior 28d)
 --------------------------------------------------------------------------------
 WITH recent_campaigns AS (
-  SELECT DISTINCT platform, campaign_id
+  SELECT DISTINCT platform, campaign_key
   FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
   WHERE date >= date_sub(current_date(), 7)
     AND date < current_date()
     AND cost > 0
 ),
 prior_campaigns AS (
-  SELECT DISTINCT platform, campaign_id
+  SELECT DISTINCT platform, campaign_key
   FROM bankrate_prod.br_rpt.paid_media_ff_campaign_daily
   WHERE date >= date_sub(current_date(), 35)
     AND date < date_sub(current_date(), 7)
@@ -321,18 +321,18 @@ prior_campaigns AS (
 SELECT
   'ff_new_campaigns_7d' AS check_name,
   r.platform,
-  r.campaign_id,
+  r.campaign_key,
   f.campaign_name,
   SUM(f.cost) AS cost_7d,
   SUM(f.clicks) AS clicks_7d,
   SUM(f.total_actual_revenue) AS revenue_7d
 FROM recent_campaigns r
-LEFT JOIN prior_campaigns p ON r.platform = p.platform AND r.campaign_id = p.campaign_id
+LEFT JOIN prior_campaigns p ON r.platform = p.platform AND r.campaign_key = p.campaign_key
 JOIN bankrate_prod.br_rpt.paid_media_ff_campaign_daily f
-  ON r.platform = f.platform AND r.campaign_id = f.campaign_id
+  ON r.platform = f.platform AND r.campaign_key = f.campaign_key
   AND f.date >= date_sub(current_date(), 7) AND f.date < current_date()
-WHERE p.campaign_id IS NULL
-GROUP BY r.platform, r.campaign_id, f.campaign_name
+WHERE p.campaign_key IS NULL
+GROUP BY r.platform, r.campaign_key, f.campaign_name
 HAVING SUM(f.cost) > 100
 ORDER BY cost_7d DESC
 LIMIT 20;

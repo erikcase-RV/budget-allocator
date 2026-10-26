@@ -1,0 +1,6 @@
+# App is managed outside the bundle since it was created manually.
+# To update the app config, use:
+#   databricks apps deploy budget-allocator --source-code-path ./dashboard-mockup
+#
+# The app.yaml in dashboard-mockup/ defines the runtime config including
+# the SQL warehouse resource and environment variables.

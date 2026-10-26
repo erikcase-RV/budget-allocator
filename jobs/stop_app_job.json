@@ -9,11 +9,6 @@
           "action": "stop",
           "app_name": "budget-allocator"
         }
-      },
-      "new_cluster": {
-        "spark_version": "15.4.x-scala2.12",
-        "num_workers": 0,
-        "node_type_id": "i3.xlarge"
       }
     }
   ],
